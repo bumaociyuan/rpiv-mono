@@ -45,5 +45,14 @@
 		"@mariozechner/pi-coding-agent": "npm:@earendil-works/pi-coding-agent@0.80.5",
 		"@mariozechner/pi-ai": "npm:@earendil-works/pi-ai@0.80.5",
 		"@mariozechner/pi-tui": "npm:@earendil-works/pi-tui@0.80.5"
+	},
+	"allowScripts": {
+		"@google/genai@1.52.0": true,
+		"protobufjs@7.6.4": true,
+		"protobufjs@7.6.5": true,
+		"esbuild@0.25.12": true,
+		"esbuild@0.27.7": true,
+		"fsevents@2.3.3": true,
+		"sharp@0.34.5": true
 	}
 }
