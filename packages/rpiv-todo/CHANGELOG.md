@@ -7,6 +7,48 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.12.0] - 2026-09-30
+
+### Fixed
+
+- **`typebox` is declared as a `peerDependencies: "*"` entry, no longer a `dependencies` entry.** Pi provides `typebox` to extensions and aliases the bare specifier to its own bundled copy at load time, so the copy this manifest installed was dead weight at best and a second live instance at worst. Pi 0.99.1 warns at every startup about the old shape ("Host-provided extension packages must be declared in peerDependencies with a \"*\" range, not dependencies: typebox"); this clears it once the release is installed. Contributed in #282; reported in #266, #268, #272 and #277.
+
+## [2.11.0] - 2026-09-21
+
+## [2.10.1] - 2026-09-13
+
+## [2.10.0] - 2026-09-12
+
+## [2.9.0] - 2026-09-01
+
+## [2.8.0] - 2026-08-29
+
+## [2.7.1] - 2026-08-24
+
+## [2.7.0] - 2026-08-21
+
+## [2.6.4] - 2026-08-20
+
+## [2.6.3] - 2026-08-20
+
+## [2.6.2] - 2026-08-18
+
+### Changed
+
+- The todo overlay now follows Pi's tool-output expansion mode: expanding shows every task instead of retaining the `+N more` summary, while collapsing reapplies `maxWidgetLines`.
+
+### Fixed
+
+- The in_progress prompt guideline now says "a task from the todo list" instead of "any task", so it no longer overrides the "skip it for single trivial tasks" rule in Pi's flat guideline list and pushes the model into one-item todo lists for every request (#154).
+
+## [2.6.1] - 2026-08-17
+
+### Added
+
+- Package card cover on pi.dev: `package.json` now declares `pi.image` pointing at the package's `docs/cover.png`.
+
+## [2.6.0] - 2026-08-15
+
 ## [2.5.2] - 2026-08-14
 
 ## [2.5.1] - 2026-08-14

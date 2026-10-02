@@ -7,7 +7,7 @@ Published plain library in `rpiv-mono`. Lockstep version with the rest of the `@
 Shared JSON config I/O utilities for rpiv-mono sibling packages: load/save with crash-resistant defaults, path resolution, guidance-field validation, env-var fallback, and TypeBox-driven schema validation. Stateless — no module-level singletons, no globalThis caches, no side effects.
 
 ## Dependencies
-- **`typebox`** (direct dependency — moved from peer): `Value` (Clean, Clone, Create) for schema-driven validation; `TObject` / `Static` for type inference
+- **`typebox`** (`peerDependencies: "*"`, host-provided): `Value` (Clean, Clone, Create) for schema-driven validation; `TObject` / `Static` for type inference. Every consumer is a Pi extension and Pi aliases `typebox` for transitive imports too, so this package must not install its own copy — it was the transitive source of the duplicate every extension inherited (v2.12.0, #282)
 
 ## Consumers
 - **`@juicesharp/rpiv-todo`**: `loadJsonConfigWithLegacyFallback`, `validateGuidanceFields`, `GuidanceFields` (type)
@@ -37,7 +37,7 @@ No consumer imports plain `loadJsonConfig` anymore — all config-reading siblin
 | `loadJsonConfig<T>(path)` | Read + parse JSON config; `{}` for missing/malformed/non-object |
 | `loadJsonConfigWithLegacyFallback<T>(name, file?)` | Prefer the XDG-resolved path; read the legacy `~/.config/<name>/<file>` only when the XDG file is absent. Preferred load entry point for all consumers |
 | `saveJsonConfig(path, data)` | Write formatted JSON with mkdir + chmod(0o600); returns `boolean` (false on fs failure) — callers MUST guard the success notification on it |
-| `GuidanceFields` | Interface: `{ promptSnippet?: string; promptGuidelines?: string[] }` |
+| `GuidanceFields` | Interface: `{ promptSnippet?: string; promptGuidelines?: string[]; description?: string }` |
 | `GuidanceFieldsSchema` | TypeBox form of `GuidanceFields` (`additionalProperties: true`) for callers baking guidance into a larger validated config |
 | `validateGuidanceFields(fields)` | Extract valid guidance fields from unknown value |
 | `parseModelKey(key)` | Parse `provider/modelId` (or legacy `provider:modelId`) → `{ provider, modelId } \| undefined`; slash preferred |

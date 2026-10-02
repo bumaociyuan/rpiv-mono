@@ -62,7 +62,16 @@ const RETRY_GLYPH = "⟲";
 // constant DISPLAY width so the status region starts at the same column on every row.
 const TAG_COL = 12;
 const MAX_LABEL_WIDTH = 40;
-const LABEL_LEADING = 4 + TAG_COL + 2;
+/** Cells the lane-row head `renderLaneRow` builds: the 2-cell selection gutter
+ *  (`CURSOR_SELECTED`/`CURSOR_UNSELECTED`) + the status glyph + its trailing space. */
+const LANE_HEAD_CELLS = 4;
+/** The two single-space inter-column separators following the tag and label columns. */
+const LABEL_SEPARATORS = 2;
+/** The label column's fixed lane-row overhead (head + tag column + separators). The measure
+ *  is lane-row-EXACT but unit-row-APPROXIMATE — `renderUnitRow` leads with 6 cells and no
+ *  tag column — so the `labelWidth` clamp in `renderLaneList` is deliberately approximate;
+ *  do not re-derive it from unit rows. */
+const LABEL_LEADING = LANE_HEAD_CELLS + TAG_COL + LABEL_SEPARATORS;
 const PROGRESS_MIN_WIDTH = 12;
 
 /** Per-status glyph; needs-input overrides it (see renderLaneRow). */
@@ -449,7 +458,10 @@ export function renderLiveOutputBorder(theme: Theme, width: number): string {
  * and ≤1 line by construction so the console's constant-height invariant holds. Its
  * outcome can legitimately diverge from the lane chip (the accepted
  * `droppedFailureRows` divergence: recap reads "completed" off the trail while the
- * chip shows ✗ failed).
+ * chip shows ✗ failed). `routingNotes`, when the recap carries them, render as
+ * dim parts between the artifact-arrow parts and the `⚠` reason — the
+ * honest pass-through floors' deferral notes, visible without claiming a line
+ * of their own.
  */
 export function renderRecap(theme: Theme, width: number, runId: string): string[] {
 	const recap = getLane(runId)?.recap;
@@ -460,6 +472,12 @@ export function renderRecap(theme: Theme, width: number, runId: string): string[
 		parts.push(theme.fg("muted", `→ ${displayArtifact(recap.artifacts[n - 1])}`));
 		if (n > 1) parts.push(theme.fg("dim", `+${n - 1} more`));
 	}
+	// Route-note recap — dim parts, ordered after the artifact-arrow parts and
+	// before the `⚠` failure-reason part (one part per note). The notes ride the
+	// SAME joined-and-truncated single line, so the console's constant-height
+	// invariant holds; a stop's note never appears here — the stopped refinement
+	// already renders it once as the `⚠` failureReason.
+	for (const note of recap.routingNotes ?? []) parts.push(theme.fg("dim", note));
 	// Failure reason only for a non-completed outcome that carries one.
 	if (recap.outcome !== "completed" && recap.failureReason) {
 		parts.push(theme.fg("warning", `⚠ ${recap.failureReason}`));

@@ -111,6 +111,72 @@ describe("wrapTab + allAnswered", () => {
 	});
 });
 
+describe.each([
+	["legacy", " ", "n"],
+	["CSI-u", "\x1b[32u", "\x1b[110u"],
+	["CSI-u explicit unmodified", "\x1b[32;1u", "\x1b[110;1u"],
+])("routeKey — %s Space and notes keys", (_encoding, space, notes) => {
+	const multiRuntime = (currentItem: WrappingSelectItem) =>
+		makeRuntime({ questions: [makeQuestion({ multiSelect: true })], isMulti: false, currentItem });
+
+	it("Space toggles the focused multi-select option", () => {
+		expect(routeKey(space, makeState({ optionIndex: 1 }), multiRuntime({ kind: "option", label: "B" }))).toEqual({
+			kind: "toggle",
+			index: 1,
+		});
+	});
+
+	it.each([
+		{ kind: "next", label: "Next" },
+		{ kind: "other", label: "Type something." },
+	] as const)("Space does not toggle the $kind row", (item) => {
+		expect(routeKey(space, makeState(), multiRuntime(item))).toEqual({ kind: "ignore" });
+	});
+
+	it("Space does not select a single-select option", () => {
+		expect(routeKey(space, makeState(), makeRuntime())).toEqual({ kind: "ignore" });
+	});
+
+	it("n opens notes on a question tab", () => {
+		expect(routeKey(notes, makeState(), makeRuntime())).toEqual({ kind: "notes_enter" });
+	});
+
+	it("n opens notes on the multi-select Next row", () => {
+		expect(routeKey(notes, makeState(), multiRuntime({ kind: "next", label: "Next" }))).toEqual({
+			kind: "notes_enter",
+		});
+	});
+
+	it("n opens the global note on the Submit tab", () => {
+		expect(routeKey(notes, makeState({ currentTab: 2 }), makeRuntime())).toEqual({ kind: "notes_enter" });
+	});
+
+	it("a remapped Submit action takes precedence over the notes shortcut", () => {
+		const runtime = makeRuntime({ keybindings: { matches: (data, name) => data === notes && name === KEY.SUBMIT } });
+		expect(routeKey(notes, makeState({ currentTab: 2 }), runtime)).toEqual({ kind: "submit" });
+	});
+
+	it.each([space, notes])("leaves inline input and collapsed mode untouched (%j)", (data) => {
+		expect(routeKey(data, makeState({ inputMode: true }), makeRuntime())).toEqual({ kind: "ignore" });
+		expect(routeKey(data, makeState({ collapsed: true }), makeRuntime())).toEqual({ kind: "ignore" });
+	});
+
+	it.each([space, notes])("forwards typing to an already open notes editor (%j)", (data) => {
+		expect(routeKey(data, makeState({ notesVisible: true }), makeRuntime())).toEqual({ kind: "notes_forward", data });
+	});
+});
+
+describe("routeKey — modified CSI-u shortcuts", () => {
+	it.each(["\x1b[32;3u", "\x1b[32;5u", "\x1b[110;3u", "\x1b[110;5u"])(
+		"does not treat Alt/Ctrl-modified keys as bare Space or n (%j)",
+		(data) => {
+			const runtime = makeRuntime({ questions: [makeQuestion({ multiSelect: true })], isMulti: false });
+			expect(routeKey(data, makeState(), runtime)).toEqual({ kind: "ignore" });
+			expect(routeKey(data, makeState({ currentTab: 2 }), makeRuntime())).toEqual({ kind: "ignore" });
+		},
+	);
+});
+
 describe("routeKey — nav", () => {
 	it("UP from a non-zero index decrements by 1", () => {
 		expect(routeKey(sentinel(KEY.UP), makeState({ optionIndex: 2 }), makeRuntime())).toEqual({
@@ -654,6 +720,62 @@ describe("routeKey — notes", () => {
 		expect(routeKey(data, makeState({ notesVisible: true }), makeRuntime())).toEqual({
 			kind: "notes_forward",
 			data,
+		});
+	});
+});
+
+describe("routeKey — global note on the Submit tab", () => {
+	// The Submit tab lives at the pseudo-index currentTab === questions.length (2 for the
+	// default two-question runtime). #182: `n` there opens the notes editor scoped to the
+	// whole questionnaire instead of a single question.
+	const submitTab = (over: Partial<QuestionnaireState> = {}) =>
+		makeState({ currentTab: 2, notesVisible: false, ...over });
+
+	it("'n' with the editor closed emits notes_enter at the pseudo-index", () => {
+		expect(routeKey("n", submitTab(), makeRuntime())).toEqual({ kind: "notes_enter" });
+	});
+
+	it("while open, the Tab byte forwards to the notes editor — NOT tab_switch", () => {
+		expect(routeKey(BYTE_TAB, submitTab({ notesVisible: true }), makeRuntime())).toEqual({
+			kind: "notes_forward",
+			data: BYTE_TAB,
+		});
+	});
+
+	it("while open, a printable byte forwards into the editor (typing captured)", () => {
+		expect(routeKey("z", submitTab({ notesVisible: true }), makeRuntime())).toEqual({
+			kind: "notes_forward",
+			data: "z",
+		});
+	});
+
+	it("while open, a second 'n' forwards as a literal character instead of re-entering notes", () => {
+		expect(routeKey("n", submitTab({ notesVisible: true }), makeRuntime())).toEqual({
+			kind: "notes_forward",
+			data: "n",
+		});
+	});
+
+	it("while open, Esc commits the note (notes_exit)", () => {
+		expect(routeKey(sentinel(KEY.CANCEL), submitTab({ notesVisible: true }), makeRuntime())).toEqual({
+			kind: "notes_exit",
+		});
+	});
+
+	it("while open, Enter commits the note (notes_exit) — it does NOT submit", () => {
+		expect(routeKey(sentinel(KEY.CONFIRM), submitTab({ notesVisible: true }), makeRuntime())).toEqual({
+			kind: "notes_exit",
+		});
+	});
+
+	it("with the editor closed, Enter still submits/cancels per submitChoiceIndex (the n branch shadows nothing)", () => {
+		// D1-revised Enter-submit preserved: the notes branch sits AFTER the confirm branch
+		// inside routeSubmitTab, so Enter keeps its submit/cancel meaning on the Submit tab.
+		expect(routeKey(sentinel(KEY.CONFIRM), submitTab({ submitChoiceIndex: 0 }), makeRuntime())).toEqual({
+			kind: "submit",
+		});
+		expect(routeKey(sentinel(KEY.CONFIRM), submitTab({ submitChoiceIndex: 1 }), makeRuntime())).toEqual({
+			kind: "cancel",
 		});
 	});
 });

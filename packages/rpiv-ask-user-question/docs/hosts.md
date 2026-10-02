@@ -11,6 +11,12 @@ render at all.
 | RPC / ACP host (VS Code pendant, Zed, Paseo) | `ask_user_question` in its tool list | A sequence of the host's own native select and input dialogs |
 | Non-interactive run (no UI) | Nothing — the tool is removed | Nothing |
 
+### Terminal attention
+
+After UI availability and questionnaire validation succeed, the package emits exactly one standard terminal BEL (`\x07`) immediately before the interactive wait begins. The signal is sent to `stdout` only when `process.stdout.isTTY` is true, so redirected output and non-TTY RPC streams stay untouched. A TTY-backed RPC dialog walker receives the same signal as the TUI path.
+
+The BEL is best effort: if the synchronous terminal write fails, the questionnaire continues and its existing prompt/blocked lifecycle and result envelope are unchanged. The terminal configuration decides whether the BEL is audible, visual, or ignored. No BEL is emitted for missing UI, invalid questionnaires, or a failed TUI session load.
+
 ### Non-interactive runs
 
 A `before_agent_start` hook reconciles the active tool set against `ctx.hasUI` before every
@@ -37,6 +43,9 @@ TUI produces. Trade-offs inherent to the native primitives:
 - No side-by-side preview pane. Previews are folded into the dialog title instead,
   truncated at 600 characters each.
 - No tab bar and no Submit review tab — one dialog per question, in order.
+- No notes. Both note kinds — per-question `n` on a question tab and global `n` on the
+  Submit tab — are terminal-only; the host's native `select` and `input` primitives carry
+  no note field.
 - Multi-select is a free-text input: type the option numbers, comma-separated
   (`1,3`). Any token that is not a valid option index is treated as a typed custom answer,
   which is how the `Type something.` escape survives. An empty input commits an empty
@@ -58,7 +67,8 @@ Some parts of the dialog exist only under the right conditions:
 | `Type something.` row | Always |
 | Side-by-side preview | An option carries a `preview`, and terminal and pane are both ≥ 100 columns |
 | Preview pane at all | Single-select questions only |
-| Collapse shortcut | `collapseKey` is not `"off"` and the host exposes raw terminal input |
+| Collapse shortcut | `collapseKey` is not `"off"` |
+| Full overlay hide on collapse | The host also exposes raw terminal input (the only path that can reopen a hidden overlay); without it, collapsing shrinks the dialog to a visible one-line row instead |
 | Localized chrome | `@juicesharp/rpiv-i18n` is installed |
 
 ## Loading and startup cost
